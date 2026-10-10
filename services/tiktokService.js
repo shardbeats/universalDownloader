@@ -25,10 +25,13 @@ async function fetchTikTokData(videoUrl) {
     const html = res.data;
     const $ = cheerio.load(html);
 
-    const title =
+    const rawTitle =
       $("#avatar_and_text h2").text().trim() ||
       $("#avatarAndTextUsual h2").text().trim() ||
       null;
+    const title = rawTitle
+      ? rawTitle.replace(/^ssstik\.io_?/i, "").trim() || null
+      : null;
 
     const thumbnail =
       $(".result_author").attr("src") ||

@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
+const path = require("path");
 
 const app = express();
 
@@ -8,6 +9,8 @@ app.use(cors());
 app.use(express.json());
 app.set("json spaces", 2);
 app.use(morgan("dev"));
+
+app.use(express.static(path.join(__dirname, "public")));
 
 app.use("/api/bluesky", require("./routes/bluesky"));
 app.use("/api/capcut", require("./routes/capcut"));
@@ -27,6 +30,7 @@ app.use("/api/tiktok", require("./routes/tiktok"));
 app.use("/api/tumblr", require("./routes/tumblr"));
 app.use("/api/twitter", require("./routes/twitter"));
 app.use("/api/youtube", require("./routes/youtube"));
+app.use("/api/history", require("./routes/history"));
 
 const endpoints = [
   "/api/bluesky",
@@ -50,13 +54,44 @@ const endpoints = [
 ];
 
 app.get("/", (req, res) => {
-  res.status(200).json({
-    success: true,
-    author: "Milan Bhandari",
-    contact: "https://www.milanb.com.np/",
-    message: "Universal Downloader API is running",
-    endpoints,
-  });
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+app.get("/api/detect", (req, res) => {
+  const { url } = req.query;
+  if (!url) {
+    return res.status(400).json({ success: false, error: "Missing 'url' query parameter." });
+  }
+
+  const platformPatterns = [
+    { name: "youtube", pattern: /(?:youtube\.com|youtu\.be)/i },
+    { name: "tiktok", pattern: /tiktok\.com/i },
+    { name: "instagram", pattern: /instagram\.com/i },
+    { name: "twitter", pattern: /(?:twitter\.com|x\.com)/i },
+    { name: "facebook", pattern: /facebook\.com/i },
+    { name: "spotify", pattern: /spotify\.com/i },
+    { name: "reddit", pattern: /reddit\.com/i },
+    { name: "pinterest", pattern: /pinterest\./i },
+    { name: "snapchat", pattern: /snapchat\.com/i },
+    { name: "linkedin", pattern: /linkedin\.com/i },
+    { name: "soundcloud", pattern: /soundcloud\.com/i },
+    { name: "dailymotion", pattern: /dailymotion\.com/i },
+    { name: "threads", pattern: /threads\.net/i },
+    { name: "bluesky", pattern: /bsky\.app/i },
+    { name: "douyin", pattern: /douyin\.com/i },
+    { name: "kuaishou", pattern: /kuaishou\.com/i },
+    { name: "tumblr", pattern: /tumblr\.com/i },
+    { name: "terabox", pattern: /terabox\.com/i },
+    { name: "capcut", pattern: /capcut\.com/i },
+  ];
+
+  for (const platform of platformPatterns) {
+    if (platform.pattern.test(url)) {
+      return res.json({ success: true, platform: platform.name });
+    }
+  }
+
+  res.json({ success: true, platform: "unknown" });
 });
 
 app.use((req, res) => {
@@ -76,5 +111,5 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Universal Downloader corriendo en http://localhost:${PORT}`);
 });

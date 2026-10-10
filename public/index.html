@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Downloader</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-download"></i> Universal Downloader</h1>
+            <p>Pega el enlace de cualquier plataforma para descargar</p>
+        </header>
+
+        <main>
+            <div class="input-section">
+                <div class="input-wrapper">
+                    <i class="fas fa-link"></i>
+                    <input type="url" id="urlInput" placeholder="Pega aquí el enlace (YouTube, TikTok, Instagram...)" autocomplete="off">
+                    <button id="downloadBtn" class="btn-primary">
+                        <i class="fas fa-download"></i> Descargar
+                    </button>
+                </div>
+                <div id="platformBadge" class="platform-badge hidden">
+                    <i class="fab fa-youtube"></i>
+                    <span>YouTube</span>
+                </div>
+            </div>
+
+            <div id="loadingSection" class="loading-section hidden">
+                <div class="spinner"></div>
+                <p>Procesando descarga...</p>
+            </div>
+
+            <div id="errorSection" class="error-section hidden">
+                <i class="fas fa-triangle-exclamation"></i>
+                <span id="errorMessage"></span>
+            </div>
+
+            <div id="resultSection" class="result-section hidden">
+                <div class="result-card">
+                    <div class="result-header">
+                        <img id="resultThumbnail" src="" alt="Thumbnail">
+                        <div class="result-info">
+                            <h3 id="resultTitle">Título del video</h3>
+                            <p id="resultPlatform">Plataforma</p>
+                        </div>
+                    </div>
+                    <div id="downloadList" class="download-list"></div>
+                    <details class="raw-details">
+                        <summary>Ver respuesta de la API</summary>
+                        <pre id="rawJson"></pre>
+                    </details>
+                </div>
+            </div>
+
+            <div class="history-section">
+                <div class="history-header">
+                    <h2><i class="fas fa-history"></i> Historial de descargas <span id="historyCount" class="history-count"></span></h2>
+                    <button id="clearHistoryBtn" class="btn-clear" title="Borrar historial">
+                        <i class="fas fa-trash"></i> Limpiar
+                    </button>
+                </div>
+                <div class="history-filters">
+                    <button class="filter-btn active" data-filter="all">Todas</button>
+                    <button class="filter-btn" data-filter="youtube">YouTube</button>
+                    <button class="filter-btn" data-filter="tiktok">TikTok</button>
+                    <button class="filter-btn" data-filter="instagram">Instagram</button>
+                    <button class="filter-btn" data-filter="twitter">Twitter</button>
+                    <button class="filter-btn" data-filter="facebook">Facebook</button>
+                    <button class="filter-btn" data-filter="spotify">Spotify</button>
+                    <button class="filter-btn" data-filter="other">Otras</button>
+                </div>
+                <div id="historyList" class="history-list">
+                    <div class="empty-history">
+                        <i class="fas fa-inbox"></i>
+                        <p>No hay descargas aún</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Universal Downloader API v1.8.1</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

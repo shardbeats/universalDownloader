@@ -18,6 +18,6 @@
     "qs": "^6.11.2"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "nodemon": "^1.14.10"
   }
 }
