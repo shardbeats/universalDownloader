@@ -42,26 +42,42 @@ function escapeHtml(s) {
 
 let historyTotal = 0;
 let useLocalFallback = false;
+const PAGE_SIZE = 20;
+let currentPage = 1;
+let totalPages = 1;
 
 function loadLocalHistory() {
     try {
         const saved = localStorage.getItem('downloadHistory');
-        downloadHistory = saved ? JSON.parse(saved) : [];
+        const all = saved ? JSON.parse(saved) : [];
+        historyTotal = all.length;
+        totalPages = Math.max(1, Math.ceil(historyTotal / PAGE_SIZE));
+        if (currentPage > totalPages) currentPage = totalPages;
+        const start = (currentPage - 1) * PAGE_SIZE;
+        downloadHistory = all.slice(start, start + PAGE_SIZE);
     } catch (e) {
         downloadHistory = [];
+        historyTotal = 0;
+        totalPages = 1;
     }
-    historyTotal = downloadHistory.length;
     renderHistory();
 }
 
-async function loadHistory() {
+async function loadHistory(page = currentPage) {
+    currentPage = Math.max(1, page);
     try {
-        const res = await fetch(`/api/history?platform=${encodeURIComponent(currentFilter)}&limit=200`);
+        const offset = (currentPage - 1) * PAGE_SIZE;
+        const res = await fetch(`/api/history?platform=${encodeURIComponent(currentFilter)}&limit=${PAGE_SIZE}&offset=${offset}`);
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const json = await res.json();
         if (!json.success) throw new Error(json.error || 'API error');
         downloadHistory = json.data.items;
         historyTotal = json.data.total;
+        totalPages = Math.max(1, Math.ceil(historyTotal / PAGE_SIZE));
+        if (currentPage > totalPages) {
+            currentPage = totalPages;
+            return loadHistory(currentPage);
+        }
         useLocalFallback = false;
         renderHistory();
         migrateLocalHistory();
@@ -70,6 +86,12 @@ async function loadHistory() {
         useLocalFallback = true;
         loadLocalHistory();
     }
+}
+
+function goToPage(page) {
+    if (page < 1 || page > totalPages || page === currentPage) return;
+    loadHistory(page);
+    document.querySelector('.history-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function saveHistory() {
@@ -102,11 +124,14 @@ async function migrateLocalHistory() {
 
 async function addToHistory(item) {
     if (useLocalFallback) {
-        downloadHistory.unshift(item);
-        downloadHistory = downloadHistory.slice(0, 200);
-        historyTotal = downloadHistory.length;
-        saveHistory();
-        renderHistory();
+        try {
+            const saved = localStorage.getItem('downloadHistory');
+            const all = saved ? JSON.parse(saved) : [];
+            all.unshift(item);
+            localStorage.setItem('downloadHistory', JSON.stringify(all.slice(0, 200)));
+        } catch (e) { /* almacenamiento lleno o bloqueado */ }
+        currentPage = 1;
+        loadLocalHistory();
         return;
     }
     try {
@@ -116,23 +141,24 @@ async function addToHistory(item) {
             body: JSON.stringify(item),
         });
     } catch (e) { /* se muestra igual con recarga */ }
-    loadHistory();
+    loadHistory(1);
 }
 
 function renderHistory() {
     const historyList = document.getElementById('historyList');
     const countEl = document.getElementById('historyCount');
 
-    if (historyTotal > downloadHistory.length) {
-        countEl.textContent = `Mostrando ${downloadHistory.length} de ${historyTotal}`;
-    } else if (historyTotal > 0) {
-        countEl.textContent = `${historyTotal} descarga${historyTotal === 1 ? '' : 's'}`;
+    if (historyTotal > 0) {
+        const start = (currentPage - 1) * PAGE_SIZE + 1;
+        const end = Math.min(currentPage * PAGE_SIZE, historyTotal);
+        countEl.textContent = `${start}-${end} de ${historyTotal} · Pág. ${currentPage}/${totalPages}`;
     } else {
         countEl.textContent = '';
     }
 
     if (downloadHistory.length === 0) {
         historyList.innerHTML = '<div class="empty-history"><i class="fas fa-inbox"></i><p>No hay descargas aún</p></div>';
+        renderPagination();
         return;
     }
 
@@ -148,6 +174,30 @@ function renderHistory() {
             <div class="history-item-date">${escapeHtml(item.date || '')}</div>
         </div>
     `).join('');
+    renderPagination();
+}
+
+function renderPagination() {
+    const el = document.getElementById('historyPagination');
+    if (!el) return;
+    if (totalPages <= 1) {
+        el.innerHTML = '';
+        return;
+    }
+
+    const pages = [];
+    const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
+    const end = Math.min(totalPages, start + 4);
+    for (let p = start; p <= end; p++) pages.push(p);
+
+    el.innerHTML = `
+        <button class="page-btn" data-page="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''}>‹ Anterior</button>
+        ${pages.map((p) => `<button class="page-btn ${p === currentPage ? 'active' : ''}" data-page="${p}">${p}</button>`).join('')}
+        <button class="page-btn" data-page="${currentPage + 1}" ${currentPage === totalPages ? 'disabled' : ''}>Siguiente ›</button>
+    `;
+    el.querySelectorAll('.page-btn').forEach((btn) => {
+        btn.addEventListener('click', () => goToPage(Number(btn.dataset.page)));
+    });
 }
 
 function showPlatformBadge(platform) {
@@ -350,7 +400,7 @@ function init() {
             document.querySelectorAll('.filter-btn').forEach((b) => b.classList.remove('active'));
             btn.classList.add('active');
             currentFilter = btn.dataset.filter;
-            loadHistory();
+            loadHistory(1);
         });
     });
 
@@ -360,15 +410,17 @@ function init() {
             const scope = currentFilter === 'all' ? 'todo el historial' : `el historial de ${currentFilter}`;
             if (!confirm(`¿Borrar ${scope}?`)) return;
             if (useLocalFallback) {
-                downloadHistory = [];
-                saveHistory();
-                renderHistory();
+                try {
+                    localStorage.removeItem('downloadHistory');
+                } catch (e) { /* ignorar */ }
+                currentPage = 1;
+                loadLocalHistory();
                 return;
             }
             try {
                 await fetch(`/api/history?platform=${encodeURIComponent(currentFilter)}`, { method: 'DELETE' });
             } catch (e) { /* igual se recarga */ }
-            loadHistory();
+            loadHistory(1);
         });
     }
 }
